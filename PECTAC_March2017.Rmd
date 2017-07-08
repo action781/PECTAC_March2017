@@ -1,0 +1,513 @@
+---
+title: "A Measure Validation of the PECTAC Instrument"
+author: "Billy Jackson"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    highlight: tango
+    code_folding: "hide"
+---
+
+```{r Set knitr options, echo = FALSE, cache = FALSE}
+# Set chunks options
+knitr::opts_chunk$set(message = FALSE, 
+                      cache = TRUE, 
+                      prompt = FALSE, 
+                      tidy = TRUE, 
+                      comment = NA, 
+                      warning = FALSE)
+knitr::opts_knit$set(width=75)
+```
+
+```{r Libraries, message = FALSE, warning = FALSE, echo = FALSE, cache=FALSE}
+# Load libraries for factor analysis, exporting tables, cron's alpha, and tidyverse
+library(psy); library(tidyverse); library(lavaan); library(psych); library(knitr); library(DT); library(Hmisc)
+# library(caret)
+# library(xtable)
+```
+
+
+```{r init template,  echo=FALSE, results="hide"}
+library(ProjectTemplate)
+
+if (!file.exists(file.path("config", "global.dcf")))
+    setwd("../..")
+if (!exists("project.data.loaded")) {
+    load.project()
+    project.data.loaded <- TRUE
+}
+```
+
+
+# Overview
+
+This is a notebook used by Billy Jackson to perform statistical analyses for the paper:  
+*A Measure Validation of the PECTAC Instrument*  
+
+My game plan in this report is to:  
+
+* Become familiar with the previously collected PECTAC data 
+* Perform descriptive analyses
+* Assess the validity of the instrument by means of a CFA and analysis of Cronbach's alpha coefficient
+* Identify which items parents found most and least important
+* Analyze how parents are paying for college
+* Determine if there are any relationships between income, method of payment, and expectations  
+
+The code has been set to hidden for ease of readability.  That option can be changed universally at the top, but I would recommend viewing the code in chunks as desired.
+
+*****
+
+
+# Exploring the Data
+
+## Loading and exploring the data
+
+```{r Load dataset}
+# Read in raw dataset
+PECTAC <- read_csv("MeasureValidationStudyPECTAC2014.csv")
+
+# Getting familiar with variables and dataset
+datatable(PECTAC, caption = "Table 1: PECTAC Results", fillContainer = FALSE)
+```
+
+The raw data (Table 1 above) contains 821 observations of 167 variables.  Variables 1-14 are responses to demographic questions.  Questions 15 through 150 are related to the scales of the PECTAC instrument.  In each scale, the first half of the variables in each scale are the responses to the items themselves and the second half are the results to the "rate top two" question at the end of each scale.  More specifically:
+
+Scale         |  Likert-Scale Questions | Rank           |
+:-----------: | :---------------------: | :------------: |
+Tech          | 15-29                   | 30-44
+ATL           | 45-54                   | 55-64
+OCL           | 65-77                   | 78-90
+CF            | 91-99                   | 100-108
+CUC           | 109-118                 | 119-128
+BPP           | 129-139                 | 140-150
+
+Where:
+
+* Tech = Tech Resources in Support of Student Learning
+* ATL = Active & Team Learning
+* OCL = Out of Class Learning Opportunities
+* CF = A Caring Faculty
+* CUC = A Caring University Community
+* BPP = Being in Partnership with Parents
+
+Questions 151 & 152 are about receiving grants (yes/no, amount).  
+Questions 153-166 is COFHE data.  Are parents planning to pay for their child's college by:
+
+* Use of family assets (153-157)
+* Parental borrowing (158-163)
+* Current parent income (164-166)  
+
+How much annual income the family earns is column 167.
+
+## Transforming COFHE data
+
+```{r}
+# Paying for college subset of data
+(select(PECTAC, 153:166))
+```
+
+The COFHE financial data asked parents to respond whether partitions of their payment for their child's college was in the range of 0%, 1-25%, 26-50%, or 51-100%.  This introduced a lot of issues where parents' proportions came out to be well over 100% or under 100% in total.  To deal with this error, I will use a re-scaling method used by COFHE researcher Steve Micicucci.  The method imputes point estimates for each possible response as shown in the table below:
+
+Response      |Range          | Point Estimate
+:-----------: | :-----------: | :------------:
+1             |0%             | 0
+2             |1% - 25%       | .125
+3             |26% - 50%      | .375
+4             |51% - 100%     | .67
+
+The method then calculates the sum of the imputed point estimate shares and divides each payment share by its sum to achieve a true proportional share.  Note: COFHE researchers deemed sums of payment less than 0.38 too unreliable to scale and extract meaningful results from, so I will follow their recommendation and set those financial records to NA.
+
+```{r COFHE inside dataset 1}
+# Replace responses with point estimates
+PECTAC[, 153:166][is.na(PECTAC[, 153:166])] <- 0
+PECTAC[, 153:166][PECTAC[, 153:166] == 1] <- 0
+PECTAC[, 153:166][PECTAC[, 153:166] == 2] <- 0.125
+PECTAC[, 153:166][PECTAC[, 153:166] == 3] <- 0.375
+PECTAC[, 153:166][PECTAC[, 153:166] == 4] <- 0.67
+
+# View a snapshot of the results
+(PECTAC %>% 
+        select(153:166))
+```
+
+```{r COFHE 2, results='hold'}
+# Calculating sum of imputed shares
+PECTAC <- PECTAC %>% 
+        mutate(totals = rowSums(PECTAC[,153:166]))
+
+# Set very incomplete cases (sum < 0.38) to NA
+PECTAC$totals[PECTAC$totals < 0.38] <- NA
+
+# Scale up/down values
+PECTAC[,153:166] <- PECTAC[153:166]/PECTAC$totals
+# this will set finan. values across the board to NA for incomplete cases
+
+# Check that sum of props = 1 or NA
+PECTAC$totals <- rowSums(PECTAC[,153:166])
+
+# View the results
+datatable(PECTAC[,153:168])
+```
+
+Looking at the totals column, I noticed that the last 100 entries were all NA for the COFHE data.  Upon looking further into that, it turns out that many of the later respondents didn't answer many of the questions, especially the financial data questions.  Something to talk to Justin about.
+
+
+# Descriptive Analysis
+
+## Demographics
+```{r Demographics, collapse=TRUE}
+# Proportion of parent respondents by gender (1) = Female, (2) = Male
+table(PECTAC$ParentGen)/821
+
+
+# Proportion of parents marital status
+table(PECTAC$MaritalStat)/821
+
+
+# Proportion of students gender responded on behalf of
+table(PECTAC$StudentGen)/821
+
+
+# Proportion of parents race/ethnicity
+table(PECTAC$RaceEthnic)/821
+
+
+# Proportion of English First Language
+table(PECTAC$EngYesNo)/821
+
+
+# Proportion of parents Educational Level
+table(PECTAC$EdLevel)/821
+  
+  
+# Proportion of First Experience as College Parent
+table(PECTAC$FirstPCExp)/821
+  
+  
+# Summary of number of childeren
+table(PECTAC$NumChild)/821
+
+
+mean(PECTAC$NumChild, na.rm = TRUE)
+
+
+sd(PECTAC$NumChild, na.rm = TRUE)
+  
+  
+# Summary of parent involvement in college choice
+table(PECTAC[,10])/length(PECTAC[,10])
+
+
+```
+
+There were 821 parent respondents of the survey.  The respondents were mostly female (76.2%) and responding on behalf of mostly female students (65.0%).  74.5% of respondents were married.  Respondents largely identified as Caucasian (79.9%) and 95.5% reported speaking English as a first language.  Slightly over half (52.4%) of respondents had graduated college with a bachelor degree or higher and 98.2% of respondents had at minimum a high school degree.  Respondents had an average of 2.3 children with a standard deviation of 1.0.  For 62.4% of parents responding, this was their first child in college.
+
+
+## Descriptive statistics
+
+Going to take a look at the descriptive stats for each variable.  Of interest will be the mean, sd, skew, and kurtosis.
+
+```{r Subsetting by section and sub-section}
+# Subsetting by section and sub-section
+demographic <- select(PECTAC, 1:14)
+
+# Teaching sections
+Tech <- select(PECTAC, 15:29)
+ATL <- select(PECTAC, 45:54)
+OCL <- select(PECTAC, 65:77)
+teaching <- cbind(Tech, ATL, OCL)
+
+# Caring sections
+CF <- select(PECTAC, 91:99)
+CUC <- select(PECTAC, 109:118)
+BPP <- select(PECTAC, 129:139)
+caring <- cbind(CF, CUC, BPP)
+
+# Financial sections
+financials <- select(PECTAC, 151:167)
+```
+
+```{r Descriptive Stats for each variable, results = 'hold'}
+# Function to get the descriptive stats of interest for a dataset
+var_descriptive_stats <- function(dataset) {  
+    dataset %>%  
+        psych::describe() %>%  
+        round(digits = 2) %>%  
+        select(n, mean, sd, skew, kurtosis)  
+}
+
+# Print out table of descriptive stats for all of the variables
+datatable(var_descriptive_stats(teaching), caption = "PECTAC Teaching")  
+datatable(var_descriptive_stats(caring), caption = "PECTAC Caring")
+```
+
+Within the teaching section, every item (n = 531) was found to have a mean between 1 and 3 with a positive skew indicating that parents showed a general feeling of Very Important or Important towards those items. In the caring section, every item (n = 582) was also found to have a mean score between 1 and 3 with a positive skew. Hence, parent respondents showed a general feeling of Very Important or Important towards those items as well.
+
+Next to look at is the descriptive statistics of each section (teaching, caring) and each of the six sub-sections.  Of interest will be the mean, sd, skew, and kurtosis.
+
+```{r Scale Descriptive Statistics, results='asis'}
+# Function to get the descriptive stats for an entire scale by unlisting the variables
+scale_descriptive_stats <- function(dataset) {
+    dataset %>% 
+        unlist(use.names = FALSE) %>% 
+        psych::describe() %>% 
+        round(digit = 2) %>% 
+        select(n, mean, sd, skew, kurtosis)
+}
+
+# Get the descriptive stats
+Tech_stats <- scale_descriptive_stats(Tech)
+ATL_stats <- scale_descriptive_stats(ATL)
+OCL_stats <- scale_descriptive_stats(OCL)
+CF_stats <- scale_descriptive_stats(CF)
+CUC_stats <- scale_descriptive_stats(CUC)
+BPP_stats <- scale_descriptive_stats(BPP)
+
+# Combine into one single table
+scale_stats <- rbind(Tech_stats, ATL_stats, OCL_stats, CF_stats, CUC_stats, BPP_stats)
+row.names(scale_stats) <- c("Tech", "ATL", "OCL", "CF", "CUC", "BPP")
+datatable(scale_stats, caption = "PECTAC Scales")
+```
+
+The scale statistics are similar to the individual variable statistics -- each carrying a mean between 1 and 2 with a positive skew indicating that parents generally feel that all of the scales carry some importance.
+
+*****
+# Confirmatory Factor Analysis
+
+The game plan:
+
+* Compute KMO index to determine suitability for factor analysis
+* Perform a Confirmatory Factor Analysis (CFA) with the `lavaan` package (version 0.5-23.1097)
+    + Check for RMSEA < 0.06
+    + Check for SRMR (Standardized Root Mean Residual) < 0.08
+    + Check for CFI (Comparative Fit Index) > 0.95
+
+## KMO Index
+
+If the KMO index is high (nearly 1), the factor analysis can act efficiently.  If KMO is low (near 0), the factor analysis will not be relevant (Kaiser, 1974).  There is a `KMO` function in the `psych` package to perform this.
+
+```{r KMO, results = 'hold'}
+# Kaiser-Meyer-Olkin measure of sampling adequacy
+teaching_cor_matrix <- cor(teaching, use = "complete.obs")
+caring_cor_matrix <- cor(caring, use = "complete.obs")
+KMO(teaching_cor_matrix)
+KMO(caring_cor_matrix)
+```
+
+The teaching section obtained a measure of sampling adequacy (MSA) of 0.90. The caring section obtained a MSA of 0.91. Based on Kaiser’s valuations of KMO test results, the MSA scores of PECTAC sub-section indicates the sampling is more than adequate for factor analysis (Kaiser, 1974).
+
+
+## Confirmatory Factor Analysis
+
+I'll fit the CFA using a diagonally weighted least squares with mean and variance adjustment (DWLSMV) estimator.
+DWLSMV estimator is a preferred choice for non-normal data, and specifically, ordinal data such as likert-scale data. (Li, 2016)
+
+```{r Confirmatory Factor Analysis - Teaching, message=FALSE, warning=FALSE}
+# Define lavaan teaching model
+teaching_model <- "Tech =~ TechAAvWeb + TechWebAccessRDA + TechWebAccessTF + TechWebAccessFA + TechSAAWeb + TechEmail + TechBooks + TechCLabs + TechInternetResHall + TechWireless + TechLibrary + TechUnivLaptop +
+TechFacultyEmail + TechAcademicContentWeb + TechAAEmail
+                ATL =~ ATLDiscuss + ATLPresent + ATLOutperform + ATLGroupProject +  ATLOnline + ATLCommunityService + ATLInternetResearch + ATLWebAssign + ATLMoreIT + ATLFeedback 
+                OCL =~ OCLResponsible + OCLClubs + OCLAdditionalAA + OCLInternships + OCLRaceCulture + OCLServeVolunteer + OCLArea + OCLRemedialDisibility + OCLAccessTutorASupport + OCLSocialGroup + OCLPracticumIntern + OCLCareerCounsel + OCLMorals"
+
+# Fit a CFA model and display summary output
+CFA_teaching <- cfa(teaching_model, data = teaching, estimator = "WLSMV")
+summary(CFA_teaching, fit.measures = TRUE)
+```
+
+
+For the Teaching section (n = 531), latent variables of Tech, ATL, and OCL were defined by the indicator variables in each respective scale. The CFA showed a diagonally weighted least squares test statistic of 1376.2 (p < 0.001). The RMSEA = 0.045 is below 0.06, therefore is low enough to be indicative of acceptable model fit. The SRMR = 0.074 falls below the maximum 0.08 cut-off criteria for an acceptable model. The Comparative Fit Index (CFI) 0.957, which is greater than the minimum threshold of 0.95 to be considered an indicator of good fit (Hooper, Coughlan, & Mullen, 2008). Based on the results of those CFA elements, the factor structure was determined as adequate for the PECTAC teaching section.
+
+
+```{r Confirmatory Factor Analysis - Caring, message=FALSE, warning=FALSE}
+# Define lavaan caring model
+caring_model <- "CF =~ CFContactAA + CFMajorAA + CFKnownByF + CFKnownByInstructor + CFFairTreatment + CFAccessOutOfClass + CFGiveFeedback + CFAdditionalTutoring + CFFOrTA
+                CUC =~ CUCWProgram + CUCLeadership + CUCUnique + CUCOrientation +  CUCParentSupChallenge + CUCHealth + CUCComOthers + CUCRAFriend + CUCFaith + CUCCounseling 
+                BPP =~ BPPNotifyASuccess + BPPCheat + BPP24CallRet + BPPSecure + BPPMDProgress + BPPDicipline + BPPAATutorMentor + BPPIllegalSub + BPPOrientInvolve + BPPCounseling + BPPIllegalDrink"
+
+# Fit a CFA model and display summary output
+CFA_caring <- cfa(caring_model, data = caring, estimator = "WLSMV")
+summary(CFA_caring, fit.measures=TRUE)
+```
+
+For the Caring section (n = 582), latent variables of CF, CUC, and BPP were also defined by the indicator variables in each respective scale. The CFA showed a DWLS test statistic of 700.9 (p < 0.001). The RMSEA = 0.036 and SRMR = 0.069 both fell below the cut-off criteria of RMSEA < 0.06 and SRMR < 0.08 for acceptable models. A CFI calculated at 0.981 was above the 0.95 cut-off which also indicates a good fit. Based on those results, the factor structure was determined as adequate for the PECTAC caring section.
+
+
+*****
+
+# Internal reliability (Cronbach's alpha)
+```{r Cronbachs alpha, collapse = TRUE}
+# Compute Cronbachs alpha for each scale
+cronbach_stats <- function(dataset) {
+    dataset %>% 
+        cronbach() %>% 
+        unlist() %>% 
+        round(digits = 3)
+}
+
+# Create table of alpha coefficients
+alpha_table <- data.frame(rbind(cronbach_stats(Tech), cronbach_stats(ATL), cronbach_stats(OCL), cronbach_stats(CF), cronbach_stats(CUC), cronbach_stats(BPP)))
+
+row.names(alpha_table) <- c("Tech", "ATL", "OCL", "CF", "CUC", "BPP")
+
+kable(alpha_table, align = 'c')
+```
+
+Each of the six PECTAC expectation scales was shown to be independently sufficiently reliable, with each scale’s Cronbach’s alpha coefficient between 0.70 and 1.00 (Nunnally, 1978). This is interpreted as evidence that each scale of items reliably measures the same underlying idea.  
+
+Based on the CFA and internal consistency Cronbach’s alpha scores, the researchers find the PECTAC expectations scales to be sufficiently reliable.
+
+*****
+    
+# Most and Least Important Items
+
+Each of the PECTAC scales contained a final question asking respondents:
+
+> *Out of these items, which two are the most important to you as a parent? (select two)* 
+
+These responses hope to be instrumental in gauging what parents find most and least important.  It was observed that several respondents selected more or less than two choices in their "top two".  An example of the Tech scale is shown below.
+```{r Viewing top two, collapse=TRUE}
+# Scales with two two most important data included
+# Checking the sums
+(PECTAC %>% 
+    select(30:44) %>% 
+    rowSums(na.rm = TRUE) %>% 
+    table())
+```
+For analysis, I will only consider valid responses those who ranked 0, 1, or 2 items.
+
+
+
+```{r Getting scales with top two}
+# Function to get valid top-two rankings
+validtoptwo <- function(dataset, cols) {
+    Temp <- dataset[,cols]
+    Temp$sum <- rowSums(Temp, na.rm = TRUE)
+    valid <- filter(Temp, sum <= 2)
+}
+
+# Storing the valid responses
+RankTech <- validtoptwo(PECTAC, 30:44)
+RankATL <- validtoptwo(PECTAC, 55:64)
+RankOCL <- validtoptwo(PECTAC, 78:90)
+RankCF <- validtoptwo(PECTAC, 100:108)
+RankCUC <- validtoptwo(PECTAC, 119:128)
+RankBPP <- validtoptwo(PECTAC, 140:150)
+
+```
+
+
+```{r Frequencies for each item in each scale, results='asis', collapse=TRUE}
+Techsums <- colSums(RankTech, na.rm = TRUE)
+ATLsums <- colSums(RankATL, na.rm = TRUE)
+OCLsums <- colSums(RankOCL, na.rm = TRUE)
+CFsums <- colSums(RankCF, na.rm = TRUE)
+CUCsums <- colSums(RankCUC, na.rm = TRUE)
+BPPsums <- colSums(RankBPP, na.rm = TRUE)
+```
+
+
+Each expectation item received at least one selection as the most important. Items selected as most important by 250 parents and those selected by 25 or less parents are displayed in Tables 4 and 5 respectively.
+
+*****
+
+# How Parents are Paying for College
+
+Some things to analyze in this section:
+
+* How are parents paying for college?
+* Does how they pay for college affect their expectations?
+* Does their income level affect their expectations?
+
+```{r Singular Values for Fam Assets, PBorrow, and CPI}
+# Get singular values for each respondent for the 3 different types of payment method
+FamAssets <- rowSums(PECTAC[,153:157])
+PBorrow <- rowSums(PECTAC[,158:163])
+CPI <- rowSums(PECTAC[,164:166])
+```
+
+
+```{r Creating Finances Data Frame}
+# Create finances data frame
+finances <- as.data.frame(cbind(PECTAC$FamilyIncome2013BTax, FamAssets, PBorrow, CPI, PECTAC$GrantAidYesNo, PECTAC$GrantAidAMT))
+
+names(finances)[c(1,5,6)] <- c("FamilyIncome", "GrantAidYesNo", "GrantAidAMT")
+
+# Filter out incomplete cases and those with grant aid > 8
+complete.finances <- filter(finances, complete.cases(finances), GrantAidAMT <= 8)
+
+```
+
+```{r Grant Aid, collapse=TRUE}
+# Grant Aid Yes(1) or No(2)
+table(finances$GrantAidYesNo)
+prop.table(table(finances$GrantAidYesNo))
+
+
+# Grant Aid AMT (1) = $1 - $4,999, (2) = $5,000 - $9,999, (3) = $10,000 - $14,999, (4) = $15,000 - $19,999, (5) = $20,000 - $24,999, (6) = $25,000 - $29,999, (7) = $30,000-$39,999, (8) = $40,000 or more
+table(complete.finances$GrantAidAMT)  # some people entered (9) or (10) somehow?
+sum(table(complete.finances$GrantAidAMT))
+prop.table(table(complete.finances$GrantAidAMT))
+```
+
+567 respondents reported to be using grant aid in paying for college.  510 of those respondents reported a valid grant aid amount.
+
+```{r Finance proportions overvew}
+# What proportions were parents paying by fin assets, par borrowing, and cpi
+prop.table(colSums(finances[,2:4], na.rm = TRUE))
+```
+
+It appears that an even distribution of what methods parents used to pay for their child’s college. 35.6% of parental contributions to college payment comes from use of family assets, 31.7% comes from parental borrowing, and 32.7% comes from current parent income.  
+
+As one of the goals of the study is to determine pre-college payment mechanics in order to potentially inform financial education and literacy, I'm interested in AMT data of these parents. 
+
+```{r Creating pre-college/actual college subsets}
+question10 <- as.data.frame(cbind(FamAssets, PBorrow, CPI, PECTAC$YearInSchool))
+names(question10)[4] <- "YearInSchool"
+complete.question10 <- filter(question10, complete.cases(question10) == TRUE)
+
+precollege <- complete.question10[complete.question10$YearInSchool == 1,]
+college <- complete.question10[complete.question10$YearInSchool > 1,]
+```
+
+```{r Proportions by type}
+precollege.props <- prop.table(colSums(precollege[,1:3], na.rm = TRUE))
+college.props <- prop.table(colSums(college[,1:3], na.rm = TRUE))
+table <- rbind(precollege.props*40, college.props*495)
+```
+
+The proportions by pre-college and in/post-college are shown in Table 7 above, however, a Pearson’s chi-square test shows there to be no significant difference between the two sets of proportions.
+
+# Relationship between income and method of payment
+
+```{r Finances cor matrix, results = 'asis'}
+# Correlation matrix of tax income with method of payments
+Finances.cor.matrix <- rcorr(as.matrix(finances))
+datatable(Finances.cor.matrix$r)
+```
+
+```{r Where were parents borrowing from?, results='asis', collapse=TRUE}
+# Percentages of PBorrowing
+prop.table(colSums(PECTAC[,158:163], na.rm = TRUE))
+
+# As an xtable
+prop.table(as.matrix(colSums(PECTAC[,158:163], na.rm = TRUE)))
+```
+
+
+
+
+
+
+
+*****
+Statistical analysis done by Billy Jackson from November 2016 - February 2017  
+Updated for public viewing on July 6, 2017  
+[Email](action781@gmail.com)  |  [Homepage](https://sites.google.com/northshore.edu/billy-jackson/home)  |  [Github](www.github.com/action781)
+
+
+
+
+
+
+
+

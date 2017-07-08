@@ -1,0 +1,313 @@
+---
+title: "Validity"
+author: "Billy Jackson"
+date: "June 9, 2016"
+output: pdf_document
+---
+
+# Methods
+The data was collected by two means:  A survey of 637 parents conducted at Saint Rose College in May 2014 and surveying 185 parents online through a mechanical turk via Amazon.
+
+
+# Cleaning
+```{r, message=FALSE}
+#Load library 'psy'
+library(psy); library(caret); library(dplyr)
+```
+
+These next few chunks of code clean up the data set in preparation for analysis.
+```{r}
+# Load data
+setwd("~/Dropbox/Measure Validation Study")
+alldata <- read.csv("MeasureValidationStudyPECTAC2014.csv", stringsAsFactors=FALSE)
+
+#Add ID#
+alldata$ID <- row(alldata)
+```
+
+
+```{r}
+# Subsetting alldata by scale
+ALLTRISOL <- alldata[,15:29]
+ALLATL <- alldata[,45:54]
+ALLCLO <- alldata[,65:77]
+ALLACF <- alldata[,91:99]
+ALLACU <- alldata[,109:118]
+ALLBIPP <- alldata[,129:139]
+nonfinancesdata <- alldata[,1:152]
+financesdata <- alldata[,c(153:166, 168)]
+TaxIncome2013 <- alldata[,167]
+```
+
+
+```{r}
+# Complete Cases
+ccALLTRISOL <- ALLTRISOL[complete.cases(ALLTRISOL == TRUE),]
+ccALLATL <- ALLATL[complete.cases(ALLATL == TRUE),]
+ccALLCLO <- ALLCLO[complete.cases(ALLCLO == TRUE),]
+ccALLACF <- ALLACF[complete.cases(ALLACF == TRUE),]
+ccALLACU <- ALLACU[complete.cases(ALLACU == TRUE),]
+ccALLBIPP <- ALLBIPP[complete.cases(ALLBIPP == TRUE),]
+```
+
+
+```{r Finances}
+#Creating data frame of only the 1-100% scales data
+
+#Imputing values
+newfinancesdata <- financesdata
+newfinancesdata[newfinancesdata == 1 | is.na(newfinancesdata) == TRUE] <- 0
+newfinancesdata[newfinancesdata == 2] <- .125
+newfinancesdata[newfinancesdata == 3] <- .375
+newfinancesdata[newfinancesdata == 4] <- .67
+
+#Sum of imputed shares before rescaling
+newfinancesdata$totals <- rowSums(newfinancesdata, na.rm = TRUE)
+
+#Set aside very incomplete cases (sum < 0.38)
+newfinancesdata$totals[newfinancesdata$totals < 0.38] <- NA
+
+#Reattach datasets
+imputedDF <- data.frame(nonfinancesdata, newfinancesdata)
+
+#New dataset with no incomplete finances
+incompletefinancesremovedDF <- filter(imputedDF, is.na(imputedDF$totals) == FALSE)
+
+#Rescale values
+incompletefinancesremovedDF[,153:166] <-  incompletefinancesremovedDF[,153:166]/incompletefinancesremovedDF[,167]
+incompletefinancesremovedDF$totals <- rowSums(incompletefinancesremovedDF[,153:166])
+##All set, don't fuck with this!! Haha
+
+```
+
+
+# Results
+
+## Main questions -- Is there a relationship between how parents are paying and their expectations?
+
+```{r}
+# Get row means for each scale
+# Essentially, each variable is the mean score for each parent of the questions across each entire scale.
+# e.g. parent #1 had a mean score of 1.00, parent #2 had a mean score of 1.07, etc.
+TRISOLrowmean <- rowMeans(ALLTRISOL, na.rm = TRUE)
+ATLrowmean <- rowMeans(ALLATL, na.rm = TRUE)
+ACFrowmean <- rowMeans(ALLACF, na.rm = TRUE)
+ACUrowmean <- rowMeans(ALLACU, na.rm = TRUE)
+BIPProwmean <- rowMeans(ALLBIPP, na.rm = TRUE)
+CLOrowmean <- rowMeans(ALLCLO, na.rm = TRUE)
+```
+
+
+# Question 1 -- Is there a relationship between parent's TaxIncome2013 with their PECTAC expectations?
+```{r}
+# Matrix that contains each parent's Tax Income with their (mean) score for each scale
+DF <- as.data.frame(cbind(TaxIncome2013, TRISOLrowmean, ATLrowmean, ACFrowmean, ACUrowmean, BIPProwmean, CLOrowmean))
+```
+
+```{r}
+plot(DF$TaxIncome2013, DF$TRISOLrowmean)
+plot(DF$TaxIncome2013, DF$AATLrowmean)
+plot(DF$TaxIncome2013, DF$ACFrowmean)
+plot(DF$TaxIncome2013, DF$ACUCrowmean)
+plot(DF$TaxIncome2013, DF$BIPWProwmean)
+plot(DF$TaxIncome2013, DF$CLOrowmean)
+
+```
+
+```{r}
+# Lin reg for Scale Expectancy ~ Tax Income
+lm1 <- lm(TRISOLrowmean ~ TaxIncome2013, data = DF)
+summary(lm1)
+lm2 <- lm(ATLrowmean ~ TaxIncome2013, data = DF)
+summary(lm2)
+lm3 <- lm(ACFrowmean ~ TaxIncome2013, data = DF)
+summary(lm3)
+lm4 <- lm(ACUrowmean ~ TaxIncome2013, data = DF)
+summary(lm4)
+lm5 <- lm(BIPProwmean ~ TaxIncome2013, data = DF)
+summary(lm5)
+lm6 <- lm(CLOrowmean ~ TaxIncome2013, data = DF)
+summary(lm6)
+```
+
+Answer:  There is no relationship between parent's TaxIncome2013 and their PECTAC expectations.
+
+
+# Question 2 -- Is there a relationship between parent's use of Family Assets to pay for college with their PECTAC expectations?
+
+```{r}
+# Matrix that contains each parent's use of Financial Assets to Pay for College with their (mean) score for each scale
+
+#Need to find colsums of FinAssets and cbind here
+Finassets <- rowSums(financesdata[,1:5], na.rm = TRUE)
+
+DF2 <- as.data.frame(cbind(FinAssets, TRISOLrowmean, ATLrowmean, ACFrowmean, ACUrowmean, BIPProwmean, CLOrowmean))
+```
+
+```{r}
+plot(DF2$FinAssets, DF2$TRISOLrowmean)
+plot(DF2$FinAssets, DF2$AATLrowmean)
+plot(DF2$FinAssets, DF2$ACFrowmean)
+plot(DF2$FinAssets, DF2$ACUCrowmean)
+plot(DF2$FinAssets, DF2$BIPWProwmean)
+plot(DF2$FinAssets, DF2$CLOrowmean)
+
+```
+
+```{r}
+# Lin reg for Scale Expectancy ~ Tax Income
+lm1 <- lm(TRISOLrowmean ~ FinAssets, data = DF2)
+summary(lm1)
+lm2 <- lm(AATLrowmean ~ FinAssets, data = DF2)
+summary(lm2)
+lm3 <- lm(ACFrowmean ~ FinAssets, data = DF2)
+summary(lm3)
+lm4 <- lm(ACUCrowmean ~ FinAssets, data = DF2)
+summary(lm4)
+lm5 <- lm(BIPWProwmean ~ FinAssets, data = DF2)
+summary(lm5)
+lm6 <- lm(CLOrowmean ~ FinAssets, data = DF2)
+summary(lm6)
+```
+
+Answer:  There is no relationship between parent's use of family assets to pay for college and their PECTAC expectations.
+
+
+# Question 3 -- Is there a relationship between parent's use of borrowing to pay for college with their PECTAC expectations?
+
+```{r}
+# Matrix that contains each parent's use of Financial Assets to Pay for College with their (mean) score for each scale
+DF3 <- as.data.frame(cbind(PBorrowing, TRISOLrowmean, AATLrowmean, ACFrowmean, ACUCrowmean, BIPWProwmean, CLOrowmean))
+```
+
+```{r}
+plot(DF3$PBorrowing, DF3$TRISOLrowmean)
+plot(DF3$PBorrowing, DF3$AATLrowmean)
+plot(DF3$PBorrowing, DF3$ACFrowmean)
+plot(DF3$PBorrowing, DF3$ACUCrowmean)
+plot(DF3$PBorrowing, DF3$BIPWProwmean)
+plot(DF3$PBorrowing, DF3$CLOrowmean)
+
+```
+
+```{r}
+# Lin reg for Scale Expectancy ~ Tax Income
+lm1 <- lm(TRISOLrowmean ~ PBorrowing, data = DF3)
+summary(lm1)
+lm2 <- lm(AATLrowmean ~ PBorrowing, data = DF3)
+summary(lm2)
+lm3 <- lm(ACFrowmean ~ PBorrowing, data = DF3)
+summary(lm3)
+lm4 <- lm(ACUCrowmean ~ PBorrowing, data = DF3)
+summary(lm4)
+lm5 <- lm(BIPWProwmean ~ PBorrowing, data = DF3)
+summary(lm5)
+lm6 <- lm(CLOrowmean ~ PBorrowing, data = DF3)
+summary(lm6)
+```
+
+Answer:  There is no relationship between parent's borrowing money to pay for their children's college and their PECTAC expectations.
+
+#Part 2 – Using individual Question data to find out if any particular items in a scale are more valuable than others
+
+##Question 1 -- Admissions folks knowing what is important would enable them to market more effectively.  Could use this information to tailor resources or orientations accordingly.  Use an ANOVA to determine if there are any questions that appear to have a significant difference in mean from the others?  (First need to test for homoskedasticity.)
+
+```{r}
+#ColMeans for each scale
+TRISOLmeans <- colMeans(TechResourcesInSupportOfLearning, na.rm = TRUE)
+ATLmeans <- colMeans(ActiveAndTeamLearning, na.rm = TRUE)
+OOCLmeans <- colMeans(ClassLearningOpportunities, na.rm = TRUE)
+ACFmeans <- colMeans(ACaringFaculty, na.rm = TRUE)
+ACUCmeans <- colMeans(ACaringUniversityCommunity, na.rm = TRUE)
+BPPmeans <- colMeans(BeingInParternshipWithParents, na.rm = TRUE)
+TRISOLmeans
+ATLmeans
+OOCLmeans
+ACFmeans
+ACUCmeans
+BPPmeans
+```
+
+
+## Validity
+This chunk of code will print out correlation matrices for the 6 scales.
+```{r}
+# Correlation Matrices
+corMatrix1 <- cor(ccTechResourcesInSupportOfLearning)
+corMatrix1
+corMatrix2 <- cor(ccActiveAndTeamLearning)
+corMatrix2
+corMatrix3 <- cor(ccClassLearningOpportunities)
+corMatrix3
+corMatrix4 <- cor(ccACaringFaculty)
+corMatrix4
+corMatrix5 <- cor(ccACaringUniversityCommunity)
+corMatrix5
+corMatrix6 <- cor(ccBeingInPartnershipWithParents)
+corMatrix6
+```
+
+### The corrplot package and corrplot() function can visualize these nicely.
+
+This chunk of code looks for any variables that are highly correlated with others.
+```{r}
+# Find Highly Correlated
+findCorrelation(corMatrix1, cutoff = 0.75)
+findCorrelation(corMatrix2, cutoff = 0.75)
+findCorrelation(corMatrix3, cutoff = 0.75)
+findCorrelation(corMatrix4, cutoff = 0.75)
+findCorrelation(corMatrix5, cutoff = 0.75)
+findCorrelation(corMatrix6, cutoff = 0.75)
+```
+
+## Principle Component Analysis
+
+```{r}
+pc1 <- princomp(ccTechResourcesInSupportOfLearning, cor = TRUE, scores = TRUE)
+pc2 <- princomp(ccActiveAndTeamLearning, cor = TRUE, scores = TRUE)
+pc3 <- princomp(ccClassLearningOpportunities, cor = TRUE, scores = TRUE)
+pc4 <- princomp(ccACaringFaculty, cor = TRUE, scores = TRUE)
+pc5 <- princomp(ccACaringUniversityCommunity, cor = TRUE, scores = TRUE)
+pc6 <- princomp(ccActiveAndTeamLearning, cor = TRUE, scores = TRUE)
+```
+
+
+It is first worth doing a principle component analysis to ensure that all of the items capture the essence of the survey.  As shown in table xxx, none of the variables are highly correlated with eachother (aside 3, 13 of TechResources at r = 0.754 which I will have to decide on).  This is somewhat to be expected since Young already completed a PCA in his research and the items in this PECTAC survery were the variables remaining after his dimension reduction.  It was possible that new data analyzed or changing perceptions over time could introduce some new features to be eliminated, but that was not found to be the case.
+
+```{r}
+# Compute Cronbach's alpha for Tech Resources in Support of Learning
+cronbach(TechResourcesInSupportOfLearning)$alpha
+
+# Compute Cronbach's alpha for Active and Team Learning
+cronbach(ActiveAndTeamLearning)$alpha
+
+# Compute Cronbach's alpha for Class Learning Opportunities
+cronbach(ClassLearningOpportunities)$alpha
+
+# Compute Cronbach's alpha for A Caring Faculty
+cronbach(ACaringFaculty)$alpha
+
+# Compute Cronbach's alpha for A Caring University Community
+cronbach(ACaringUniversityCommunity)$alpha
+
+# Compute Cronbach's alpha for Being in Partnership with Parents
+cronbach(BeingInParternshipWithParents)$alpha
+```
+
+```{r}
+# Additional functions to look at
+#prcomp()
+#varimax()
+```
+
+Each of the six scales has shown by its cronbach's alpha to be independently sufficiently reliable, as each of them is between 0.70 and 1.00.  In the PECTAC Teaching section, the 15-item Tech Resources in Support of Learning had alpha = 0.85 for n = 635, the 10-item Active and Team Learning had alpha = 0.78 for n = 677, and the 13-item Class Learning Opportunities had alpha = 0.86 for n = 659.
+
+In the PECTAC Caring section, the 9-item A Caring Faculty had an alpha = 0.87 for n = 674, the 10-item A Caring University Community had an alpha = 0.85 for n = 653, the 11-item Being in Partnership with Parents had an alpha = 0.87 for n = 656.
+
+Several respondents omitted certain questions.  The data analyzed for each individual scale were only the respondents that had complete results within that scale, which explains why the sample sizes vary for each scale.
+
+
+
+
+
+

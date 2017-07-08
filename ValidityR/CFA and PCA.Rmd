@@ -1,0 +1,144 @@
+---
+title: "CFA and PCA"
+author: "Billy Jackson"
+date: "2/10/2017"
+output: html_document
+---
+
+## Validity -- Confirmatory Factor Analysis
+
+## Validity -- Factor Analysis
+```{r EFA with factanal(), eval=FALSE, include=FALSE}
+factanal(cc.teaching, 3)
+factanal(cc.teaching, 3, rotation = "promax")
+
+```
+*Use Promax rotation since the latent factors may be correlated with one another.  (Varimax is orthogonal)
+
+```{r PCA}
+pca <- prcomp(cc.teaching)
+```
+
+
+## Validity -- Primary Component Analysis
+```{r PCA}
+pca1 <- prcomp(cc.teaching, scale. = T)
+names(pca1) #whats in the prcomp object
+pca1$center #means of all variables
+pca1$scale #sdevs of all variables
+#pca1$rotation[,1:5] #a view of the "loadings"
+pca1$x #principal component score vectors
+dim(pca1$x) #(will give number of cc's x number of prin comps)
+biplot(pca1, scale = 0) #crazy plot
+```
+
+```{r PCA cont'd}
+#useless 3 lines below?
+std_dev <- pca1$sdev #compute standard deviation of each principal component
+pr_var <- std_dev^2 #compute variance
+pr_var[1:10] #check variance of first 10 components
+
+(pca1$sdev)^2 #is the same as 3 lines above
+```
+
+```{r PCA Cont'd}
+#proportion of variance explained
+prop_varex <- pr_var/sum(pr_var)
+prop_varex[1:20]
+```
+
+```{r Scree Plot, eval=FALSE, include=FALSE}
+#scree plot
+plot(prop_varex, xlab = "Principal Component",
+             ylab = "Proportion of Variance Explained",
+             type = "b")
+
+#cumulative scree plot
+g <- qplot(x = 1:38, y = cumsum(prop_varex)) 
+g + labs(title = "Figure x:  Cumulative Scree Plot", x = "Principal Component", y = "Cumulative Proportion of Variance Explained") + theme(plot.title = element_text(size = 10), axis.title = element_text(size = 8))
+```
+
+
+```{r Principle Component Analysis, results='asis'}
+pca.teaching <- prcomp(cc.teaching)
+xtable(summary(pca.teaching))
+#loadings(pca.teaching)
+xtable(pca.teaching) #don't need exactly but maybe similar in appendix
+
+pca.Tech <- prcomp(cc.Tech)
+xtable(pca.Tech) #not so useful?
+xtable(summary(pca.Tech))
+
+```
+
+
+
+```{r Practice, eval=FALSE, include=FALSE, results = 'asis'}
+apply(Tech, 2, var, na.rm = TRUE)
+pca <- prcomp(cc.Tech)
+par(mar = rep(2,4))
+plot(pca)
+summary(pca)
+xtable(pca)
+
+summary(pc1) # print variance accounted for
+#loadings(pc1) # pc loadings
+plot(pc1,type="lines") # scree plot
+#pc1$scores # the principal components
+biplot(pc1) 
+
+```
+
+It is first worth doing a principle component analysis to ensure that all of the items capture the essence of the survey.  As shown in table xxx, none of the variables are highly correlated with eachother (aside 3, 13 of TechResources at r = 0.754 which I will have to decide on).  This is somewhat to be expected since Young already completed a PCA in his research and the items in this PECTAC survery were the variables remaining after his dimension reduction.  It was possible that new data analyzed or changing perceptions over time could introduce some new features to be eliminated, but that was not found to be the case.
+
+```{r Bartletts test, collapse=TRUE}
+#Bartlett's test for Homoscedasticity
+R <- cor(cc.teaching) 
+n <- nrow(cc.teaching)
+p <- ncol(cc.teaching)
+chi2 <- -(n-1-(2*p+5)/6)*log(det(R))
+df <- p*(p-1)/2
+chi2
+df
+pchisq(chi2, df, lower.tail = F)
+cortest.bartlett(R, n = n) #this does all the above
+
+
+```
+
+## Validity -- Bartlett's Test for Homoscedasticity
+
+In order to measure the overall relation between the variables, we compute the determinant of the correlation matrix, R.  H0 is that R = 1; if the variables are highly correlated, we have R = 0.  Bartlett's test indicates to what extent we deviate from R = 1. This chi-sq test statistic is very large, with a p-value of virtually 0.  We can perform effectively PCA on our dataset.
+
+```{r KMO, eval=FALSE, include=FALSE}
+#Gives a cor matrix: "Partial Correlaions controlling all other variables"
+invR <- solve(R)
+A <- matrix(1,nrow(invR),ncol(invR))
+for (i in 1:nrow(invR)){
+    for (j in (i+1):ncol(invR)){
+    #above the diagonal
+    A[i,j] <- -invR[i,j]/sqrt(invR[i,i]*invR[j,j])
+    #below the diagonal
+    A[j,i] <- A[i,j]
+    }
+}
+colnames(A) <- colnames(cc.teaching)
+rownames(A) <- colnames(cc.teaching)
+
+kmo.num <- sum(R^2) - sum(diag(R^2))
+kmo.denom <- kmo.num + sum(A^2) - sum(diag(A^2))
+kmo <- kmo.num/kmo.denom
+kmo
+```
+
+KMO is used to see if we can factorize efficiently the original variables.  We use the partial correlation in order to measure the relation between two variables by removing the effect of the remaining variables.  The KMO index compares teh values of correlations between variables and those of partial correlations.  If the KMO index is high (nearly 1), the PCA can act efficiently.  If KMO is low (near 0), the PCA is not releveant.  We obtained KMO = 0.8988.
+
+```{r KMO index per variable, eval=FALSE, include=FALSE}
+for (j in 1:ncol(cc.teaching)){
+kmo_j.num <- sum(R[,j]^2) - R[j,j]^2
+kmo_j.denom <- kmo_j.num + (sum(A[,j]^2) - A[j,j]^2)
+kmo_j <- kmo_j.num/kmo_j.denom
+print(paste(colnames(cc.teaching)[j],"=",kmo_j))
+}
+```
+We can compute a KMO index per variable in order to detect those which are not related to the others.

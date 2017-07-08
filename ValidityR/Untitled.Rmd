@@ -1,0 +1,439 @@
+---
+title: "A Measure Validation of the PECTAC"
+author: "Billy Jackson"
+date: "December 19, 2016"
+output: pdf_document
+---
+
+#Preparation
+
+```{r Load Libraries, message=FALSE, warning=FALSE, }
+# Load libraries psy, Hmisc, lavaan, xtable, and dplyr
+library(psy); library(caret); library(dplyr); library(Hmisc); library(lavaan); library(psych); library(xtable)
+```
+
+# Initial Data Loading and Cleaning
+```{r Load Data}
+# Load data
+setwd("~/Dropbox/Measure Validation Study")
+alldata <- read.csv("MeasureValidationStudyPECTAC2014.csv", stringsAsFactors=FALSE)
+```
+
+
+```{r Splitting data into scales}
+# Subsetting alldata by scale
+Tech <- alldata[,15:29]
+ATL <- alldata[,45:54]
+OCL <- alldata[,65:77]
+CF <- alldata[,91:99]
+CUC <- alldata[,109:118]
+BPP <- alldata[,129:139]
+nonfinancesdata <- alldata[,1:152]
+financesdata <- alldata[,153:166]
+TaxIncome2013 <- alldata[,167]
+```
+
+```{r Complete cases of scales for further analysis}
+# Complete Cases
+cc.Tech <- Tech[complete.cases(Tech == TRUE),]
+cc.atl <- ATL[complete.cases(ATL == TRUE),]
+cc.OCL <- OCL[complete.cases(OCL == TRUE),]
+cc.CF <- CF[complete.cases(CF == TRUE),]
+cc.CUC <- CUC[complete.cases(CUC == TRUE),]
+cc.BPP <- BPP[complete.cases(BPP == TRUE),]
+
+#Binding two Sub-sections and getting complete cases
+teaching <- cbind(Tech, ATL, OCL)
+caring <- cbind(CF, CUC, BPP)
+cc.teaching <- teaching[complete.cases(teaching) == TRUE,] #531 obs
+cc.caring <- caring[complete.cases(caring) == TRUE,]
+```
+
+
+
+```{r COFHE Finances rescaling}
+#Creating data frame of only the 1-100% scales data
+
+#Imputing point estimate values
+financesdata[is.na(financesdata)] <- 0
+financesdata[financesdata == 1] <- 0
+financesdata[financesdata == 2] <- .125
+financesdata[financesdata == 3] <- .375
+financesdata[financesdata == 4] <- .67
+
+#Calculating sum of imputed shares before rescaling
+financesdata$totals <- rowSums(financesdata, na.rm = TRUE)
+
+#Set very incomplete cases (sum < 0.38) to NA
+financesdata$totals[financesdata$totals < 0.38] <- NA
+
+#Reattach datasets
+rescaled.finance.DF <- data.frame(nonfinancesdata, financesdata)
+
+#Scale down values
+rescaled.finance.DF[,153:166] <- rescaled.finance.DF[153:166]/rescaled.finance.DF[,167] 
+#this above will set finan. values across the board to NA for incomplete cases
+
+#Check that sum of props = 1
+rescaled.finance.DF$totals <- rowSums(rescaled.finance.DF[,153:166])
+```
+
+# Methods
+## Demographics
+```{r Demographic calculations, collapse=TRUE, results='asis'}
+#Proportion of parent respondents by gender
+xtable(table(alldata$ParentGen)/821)
+
+#Proportion of parents marital status
+table(alldata$MaritalStat)/821
+
+#Proportion of students gender responded on behalf of
+table(alldata$StudentGen)/821
+
+#Proportion of parents race/ethnicity
+table(alldata$RaceEthnic)/821
+
+#Proportion of English First Language
+table(alldata$EngYesNo)/821
+
+#Proportion of parents Educational Level
+table(alldata$EdLevel)/821
+
+#Proportion of First Experience as College Parent
+table(alldata$FirstPCExp)/821
+
+#Summary of number of childeren
+table(alldata$NumChild)/821
+
+summary(alldata$NumChild)
+
+sd(alldata$NumChild, na.rm = TRUE)
+
+#Summary of parent involvement in college choice
+table(alldata[,10])/length(alldata[,10])
+
+```
+
+There were 821 parent respondents of the survey.  The respondents were mostly female (76.2%) and responding on behalf of mostly female students (65.0%).  74.5% of respondents were married.  Respondents largely identified as Caucasian (79.9%) and 95.5% reported speaking English as a first language.  Slightly over half (52.4%) of respondents had graduated college with a bachelor degree or higher and 98.2% of respondents had at minimum a high school degree.  Respondents had an average of 2.3 children with a standard deviation of 1.0.  For 62.4% of parents responding, this was their first child in college.
+
+
+# Results
+
+## Descriptive Stats
+
+```{r Descriptive Statistics, results='asis', collapse=TRUE}
+descrip.teaching <- describe(teaching, range = FALSE)
+simple.teaching <- select(descrip.teaching, c(2:6))
+print.xtable(xtable(simple.teaching, caption = "PECTAC Teaching Descriptive Statistics"), type = "latex", caption.placement = "top")
+
+descrip.caring <- describe(caring, range = FALSE)
+simple.caring <- select(descrip.caring, c(2:6))
+print.xtable(xtable(simple.caring, caption = "PECTAC Caring Descriptive Statistics"), type = "latex", caption.placement = "top")
+```
+
+```{r Scale Descriptive Statistics, results='asis'}
+(Tech.list <- unlist(Tech, use.names = FALSE))
+(descrip.Tech <- describe(Tech.list, range = FALSE))
+(simple.Tech <- select(descrip.Tech, c(3:6)))
+
+ATL.list <- unlist(ATL, use.names = FALSE)
+descrip.ATL <- describe(ATL.list, range = FALSE)
+simple.ATL <- select(descrip.ATL, c(3:6))
+
+OCL.list <- unlist(OCL, use.names = FALSE)
+descrip.OCL <- describe(OCL.list, range = FALSE)
+simple.OCL <- select(descrip.OCL, c(3:6))
+
+CF.list <- unlist(CF, use.names = FALSE)
+descrip.CF <- describe(CF.list, range = FALSE)
+simple.CF <- select(descrip.CF, c(3:6))
+
+CUC.list <- unlist(CUC, use.names = FALSE)
+descrip.CUC <- describe(CUC.list, range = FALSE)
+simple.CUC <- select(descrip.CUC, c(3:6))
+
+BPP.list <- unlist(BPP, use.names = FALSE)
+descrip.BPP <- describe(BPP.list, range = FALSE)
+simple.BPP <- select(descrip.BPP, c(3:6))
+
+scale.descrip <- rbind(simple.Tech, simple.ATL, simple.OCL, simple.CF, simple.CUC, simple.BPP)
+row.names(scale.descrip) <- c("Tech", "ATL", "OCL", "CF", "CUC", "BPP")
+
+print.xtable(xtable(scale.descrip, caption = "PECTAC Scale Descriptive Statistics"), type = "latex", caption.placement = "top")
+```
+
+
+
+## Validity -- KMO and CFA
+```{r KMO}
+#Kaiser-Meyer-Olkin measure of sampling adequacy
+R <- cor(cc.teaching)
+R2 <- cor(cc.caring)
+KMO(R)
+KMO(R2)
+```
+Based on Kaiser's valuations of KMO results (cite), the overall KMO indicates the sampling is adequate for factor analysis.
+
+
+```{r Confirmatory Factor Analysis Teaching, results='asis', message=FALSE}
+teaching.model <- " Tech  =~ TechAAvWeb + TechWebAccessRDA + TechWebAccessTF + TechWebAccessFA + TechSAAWeb + TechEmail + TechBooks + TechCLabs + TechInternetResHall + TechWireless + TechLibrary + TechUnivLaptop +
+TechFacultyEmail + TechAcademicContentWeb + TechAAEmail
+            ATL =~ ATLDiscuss + ATLPresent + ATLOutperform + ATLGroupProject +  ATLOnline + ATLCommunityService + ATLInternetResearch + ATLWebAssign + ATLMoreIT + ATLFeedback 
+            OCL =~ OCLResponsible + OCLClubs + OCLAdditionalAA + OCLInternships + OCLRaceCulture + OCLServeVolunteer + OCLArea + OCLRemedialDisibility + OCLAccessTutorASupport + OCLSocialGroup + OCLPracticumIntern + OCLCareerCounsel + OCLMorals "
+
+#fit a full cfa model
+CFA.teaching <- cfa(teaching.model, data = teaching, estimator = "WLSMV")
+
+# fit an orthogonal CFA model
+CFA.teaching.Orth <- cfa(teaching.model, data = teaching, orthogonal = TRUE, estimator = "WLSMV")
+
+# Likelihood ratio test between full and orthogonal model - regular
+anova(CFA.teaching)
+anova(CFA.teaching, CFA.teaching.Orth)
+
+# display summary output for full model - xtable not possible
+summary(CFA.teaching, fit.measures=TRUE)
+```
+
+```{r Confirmatory Factor Analysis Caring, results='asis', message=FALSE}
+caring.model <- " CF  =~ CFContactAA + CFMajorAA + CFKnownByF + CFKnownByInstructor + CFFairTreatment + CFAccessOutOfClass + CFGiveFeedback + CFAdditionalTutoring + CFFOrTA
+            CUC =~ CUCWProgram + CUCLeadership + CUCUnique + CUCOrientation +  CUCParentSupChallenge + CUCHealth + CUCComOthers + CUCRAFriend + CUCFaith + CUCCounseling 
+            BPP =~ BPPNotifyASuccess + BPPCheat + BPP24CallRet + BPPSecure + BPPMDProgress + BPPDicipline + BPPAATutorMentor + BPPIllegalSub + BPPOrientInvolve + BPPCounseling + BPPIllegalDrink "
+
+# Fit a full cfa model
+CFA.caring <- cfa(caring.model, data = caring, estimator = "WLSMV")
+
+# Fit an orthogonal CFA model
+CFA.caring.Orth <- cfa(caring.model, data = caring, orthogonal = TRUE, estimator = "WLSMV")
+
+# Likelihood ratio test between full and orthogonal model - regular
+anova(CFA.caring)
+anova(CFA.caring, CFA.caring.Orth)
+
+# display summary output for full model - xtable not possible
+summary(CFA.caring, fit.measures=TRUE)
+```
+
+## Validity -- Internal Consistency
+
+```{r Cronbachs alpha, collapse = TRUE}
+# Compute Cronbachs alpha for each scale
+cronbach(Tech)$alpha
+cronbach(ATL)$alpha
+cronbach(OCL)$alpha
+cronbach(CF)$alpha
+cronbach(CUC)$alpha
+cronbach(BPP)$alpha
+
+cronbach(caring)$alpha
+cronbach(teaching)$alpha
+```
+
+
+## Findings from “two most important items”
+```{r Getting scales with top two}
+# Scales with two two most important data included
+RankTech <- alldata[,15:44]
+RankATL <- alldata[,45:64]
+RankOCL <- alldata[,65:90]
+RankCF <- alldata[,91:108]
+RankCUC <- alldata[,109:128]
+RankBPP <- alldata[,129:150]
+```
+
+```{r Sums of marked items}
+# Get sums of how many items marked
+RankTech$sum <- rowSums(RankTech[,16:30], na.rm = TRUE)
+RankATL$sum <- rowSums(RankATL[,11:20], na.rm = TRUE)
+RankOCL$sum <- rowSums(RankOCL[,14:26], na.rm = TRUE)
+RankCF$sum <- rowSums(RankCF[,10:18], na.rm = TRUE)
+RankCUC$sum <- rowSums(RankCUC[,11:20], na.rm = TRUE)
+RankBPP$sum <- rowSums(RankBPP[,12:22], na.rm = TRUE)
+```
+
+```{r Tables of outputs, collapse=TRUE}
+table(RankTech$sum)
+table(RankATL$sum)
+table(RankOCL$sum)
+table(RankCF$sum)
+table(RankCUC$sum)
+table(RankBPP$sum)
+```
+
+```{r Eliminating more than two}
+validrankTech <- RankTech[which(RankTech$sum <= 2),]
+validrankATL <- RankATL[which(RankATL$sum <= 2),]
+validrankOCL <- RankOCL[which(RankOCL$sum <= 2),]
+validrankCF <- RankCF[which(RankCF$sum <= 2),]
+validrankCUC <- RankCUC[which(RankCUC$sum <= 2),]
+validrankBPP <- RankBPP[which(RankBPP$sum <= 2),]
+```
+
+```{r Frequencies for each item in each scale, results='asis', collapse=TRUE}
+xtable(as.matrix(colSums(validrankTech, na.rm = TRUE)))
+xtable(as.data.frame(colSums(validrankATL, na.rm = TRUE)))
+colSums(validrankOCL, na.rm = TRUE)
+colSums(validrankCF, na.rm = TRUE)
+colSums(validrankCUC, na.rm = TRUE)
+colSums(validrankBPP, na.rm = TRUE)
+```
+
+```{r How many respondents, collapse=TRUE}
+scales <- c(validrankTech, validrankATL, validrankOCL, validrankCF, validrankCUC, validrankBPP)
+
+dim(validrankTech)
+dim(validrankATL)
+dim(validrankOCL)
+dim(validrankCF)
+dim(validrankCUC)
+dim(validrankBPP)
+```
+
+
+
+# How Parents are Paying for College
+
+## Preparing the data
+```{r Singular Values for Fam Assets, PBorrow, and CPI}
+FamAssets <- rowSums(rescaled.finance.DF[,153:157])
+PBorrow <- rowSums(rescaled.finance.DF[,158:163])
+CPI <- rowSums(rescaled.finance.DF[,164:166])
+```
+
+```{r Creating Complete Data Frame}
+finances <- as.data.frame(cbind(TaxIncome2013, FamAssets, PBorrow, CPI, alldata$GrantAidYesNo, alldata$GrantAidAMT))
+names(finances)[5:6] <- c("GrantAidYesNo", "GrantAidAMT")
+complete.finances <- filter(finances, complete.cases(finances) == TRUE)
+complete.finances <- complete.finances[which(complete.finances$GrantAidAMT <=8),]
+```
+
+## Overview
+```{r Grant Aid}
+#Grant Aid Yes(1) or No(2)
+table(finances$GrantAidYesNo)
+
+prop.table(table(finances$GrantAidYesNo))
+
+#Grant Aid AMT
+#(1)$1 - $4,999, (2)$5,000 - $9,999, (3)$10,000 - $14,999, (4)$15,000 - $19,999, (5)$20,000 - $24,999, (6)$25,000 - $29,999, (7)$30,000-$39,999, (8)$40,000 or more
+ # some people entered (9) or (10) somehow?
+table(complete.finances$GrantAidAMT)
+sum(table(complete.finances$GrantAidAMT))
+prop.table(table(complete.finances$GrantAidAMT))
+```
+
+```{r Finance proportions overvew}
+# What proportions were parents paying by fin assets, p borrowing, and cpi
+prop.table(colSums(finances[,2:4], na.rm = TRUE))
+
+```
+
+```{r Creating pre-college/actual college subsets}
+question10 <- as.data.frame(cbind(FamAssets, PBorrow, CPI, alldata$YearInSchool))
+names(question10)[4] <- "YearInSchool"
+complete.question10 <- filter(question10, complete.cases(question10) == TRUE)
+
+precollege <- complete.question10[complete.question10$YearInSchool == 1,]
+college <- complete.question10[complete.question10$YearInSchool > 1,]
+```
+
+```{r Proportions by type}
+precollege.props <- prop.table(colSums(precollege[,1:3], na.rm = TRUE), )
+college.props <- prop.table(colSums(college[,1:3], na.rm = TRUE))
+table <- rbind(precollege.props*40, college.props*495)
+
+```
+
+
+
+##Relationship between income and method of payment
+
+```{r Finances cor matrix, results = 'asis'}
+# Correlation matrix of tax income with method of payments
+Finances.cor.matrix <- rcorr(as.matrix(finances))
+xt <- xtable(as.data.frame(Finances.cor.matrix$r))
+xtable(xt)
+```
+
+```{r Where were parents borrowing from?, results='asis', collapse=TRUE}
+# Percentages of PBorrowing
+prop.table(colSums(rescaled.finance.DF[,158:163], na.rm = TRUE))
+
+# As an xtable
+xtable(prop.table(as.matrix(colSums(rescaled.finance.DF[,158:163], na.rm = TRUE))))
+```
+
+
+
+# Relationships between Finances and PECTAC Expectations -- Is there a relationship between how parents are paying and their expectations?
+
+We will look at a few aspects to analyze this question.  Is there a relationship between parent's TaxIncome2013 with their PECTAC expectations?  Is there a relationship betwen parent's use of family assets to pay for college with their PECTAC expectations?  Is there a relationship between parent's use of Parent Borrowing to pay for college with their PECTAC expectations?  Is there a relationship between parent's use of Current Parent Income to pay for college with their PECTAC expectations?
+
+## 1. Is there a relationship between parent's TaxIncome2013 with their PECTAC expectations?
+
+```{r Row means}
+# Get row means for each scale
+# Essentially, each variable is the mean score for each parent of the questions across each entire scale.
+# e.g. parent #1 had a mean score of 1.00, parent #2 had a mean score of 1.07, etc.
+Techrowmean <- rowMeans(Tech, na.rm = TRUE)
+ATLrowmean <- rowMeans(ATL, na.rm = TRUE)
+CFrowmean <- rowMeans(CF, na.rm = TRUE)
+CUCrowmean <- rowMeans(CUC, na.rm = TRUE)
+BPProwmean <- rowMeans(BPP, na.rm = TRUE)
+OCLrowmean <- rowMeans(OCL, na.rm = TRUE)
+```
+
+
+
+```{r Cbind row means with Financial Elements, results='asis'}
+# Matrix that contains each parent's Tax Income with their (mean) score for each scale
+DF1 <- as.data.frame(cbind(TaxIncome2013, FamAssets, PBorrow, CPI, Techrowmean, ATLrowmean, OCLrowmean, CFrowmean, CUCrowmean, BPProwmean))
+DF1 <- filter(DF1, complete.cases(DF1) == TRUE)
+rcorr(as.matrix(DF1)) #best cor matrix
+
+xtable(cor(DF1)) #better than above?
+```
+
+
+```{r Lin Reg to determine if relationship with Tax Income, results='asis'}
+# Lin reg for Scale Expectancy ~ Tax Income
+lm1 <- lm(Techrowmean ~ TaxIncome2013, data = DF1)
+xtable(summary(lm1))
+lm2 <- lm(ATLrowmean ~ TaxIncome2013, data = DF1)
+summary(lm2)
+lm3 <- lm(CFrowmean ~ TaxIncome2013, data = DF1)
+summary(lm3)
+lm4 <- lm(CUCrowmean ~ TaxIncome2013, data = DF1)
+summary(lm4)
+lm5 <- lm(BPProwmean ~ TaxIncome2013, data = DF1)
+summary(lm5)
+lm6 <- lm(OCLrowmean ~ TaxIncome2013, data = DF1)
+summary(lm6)
+```
+
+Answer:  Linear regressions showed there is no relationship between parent's TaxIncome2013 and their PECTAC expectations in categories 1, 2, 4-6.  There is a slight relationship (p=0.0015) between TaxIncome2013 and A Caring FCUClty.  
+(do we want to elaborate on this?)
+
+
+## 2. Is there a relationship between parent's use of Family Assets to pay for college with their PECTAC expectations?
+
+Answer:  Linear regressions showed there is no relationship between parent's TaxIncome2013 and their PECTAC expectations in categories 1, 2, 4-6.  There is a slight relationship (p = 0.0018) between TaxIncome2013 and A Caring Faculty.  
+(do we want to elaborate on this?)
+
+## 3. Is there a relationship between parent's use of borrowing to pay for college with their PECTAC expectations?
+
+Answer:  Linear regressions show that there is a slight negative relationship (p = 0.0080) between parents borrowing to pay for their child’s college and how they viewed the importance of Tech Resources in support of learning.  There was no significant relationship between use of family assets with the other five PECTAC scales.
+
+
+## 4. Is there a relationship between parent's use of current income to pay for college with their PECTAC expectations?
+
+Answer:  There was no relationship found between parent’s use of current income to pay for their child’s college with their PECTAC expectations.
+
+
+
+
+
+
+
+
+
