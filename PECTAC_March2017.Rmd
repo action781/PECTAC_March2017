@@ -302,7 +302,7 @@ The teaching section obtained a measure of sampling adequacy (MSA) of 0.90. The 
 I'll fit the CFA using a diagonally weighted least squares with mean and variance adjustment (DWLSMV) estimator.
 DWLSMV estimator is a preferred choice for non-normal data, and specifically, ordinal data such as likert-scale data. (Li, 2016)
 
-```{r Confirmatory Factor Analysis - Teaching, message=FALSE, warning=FALSE}
+```{r Confirmatory Factor Analysis - Teaching, message=FALSE, warning=FALSE, echo = FALSE}
 # Define lavaan teaching model
 teaching_model <- "Tech =~ TechAAvWeb + TechWebAccessRDA + TechWebAccessTF + TechWebAccessFA + TechSAAWeb + TechEmail + TechBooks + TechCLabs + TechInternetResHall + TechWireless + TechLibrary + TechUnivLaptop +
 TechFacultyEmail + TechAcademicContentWeb + TechAAEmail
@@ -318,7 +318,7 @@ summary(CFA_teaching, fit.measures = TRUE)
 For the Teaching section (n = 531), latent variables of Tech, ATL, and OCL were defined by the indicator variables in each respective scale. The CFA showed a diagonally weighted least squares test statistic of 1376.2 (p < 0.001). The RMSEA = 0.045 is below 0.06, therefore is low enough to be indicative of acceptable model fit. The SRMR = 0.074 falls below the maximum 0.08 cut-off criteria for an acceptable model. The Comparative Fit Index (CFI) 0.957, which is greater than the minimum threshold of 0.95 to be considered an indicator of good fit (Hooper, Coughlan, & Mullen, 2008). Based on the results of those CFA elements, the factor structure was determined as adequate for the PECTAC teaching section.
 
 
-```{r Confirmatory Factor Analysis - Caring, message=FALSE, warning=FALSE}
+```{r Confirmatory Factor Analysis - Caring, message=FALSE, warning=FALSE, echo=FALSE}
 # Define lavaan caring model
 caring_model <- "CF =~ CFContactAA + CFMajorAA + CFKnownByF + CFKnownByInstructor + CFFairTreatment + CFAccessOutOfClass + CFGiveFeedback + CFAdditionalTutoring + CFFOrTA
                 CUC =~ CUCWProgram + CUCLeadership + CUCUnique + CUCOrientation +  CUCParentSupChallenge + CUCHealth + CUCComOthers + CUCRAFriend + CUCFaith + CUCCounseling 
@@ -453,7 +453,7 @@ prop.table(table(complete.finances$GrantAidAMT))
 
 ```{r Finance proportions overvew}
 # What proportions were parents paying by fin assets, par borrowing, and cpi
-prop.table(colSums(finances[,2:4], na.rm = TRUE))
+DT::datatable(prop.table(colSums(finances[,2:4], na.rm = TRUE)))
 ```
 
 It appears that an even distribution of what methods parents used to pay for their child’s college. 35.6% of parental contributions to college payment comes from use of family assets, 31.7% comes from parental borrowing, and 32.7% comes from current parent income.  

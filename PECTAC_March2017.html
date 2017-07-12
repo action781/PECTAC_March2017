@@ -10,7 +10,7 @@
 
 <meta name="author" content="Billy Jackson" />
 
-<meta name="date" content="2017-07-08" />
+<meta name="date" content="2017-07-12" />
 
 <title>A Measure Validation of the PECTAC Instrument</title>
 
@@ -406,6 +406,7 @@ PECTAC$totals &lt;-<span class="st"> </span><span class="kw">rowSums</span>(PECT
 </div>
 <div id="descriptive-statistics" class="section level2">
 <h2>Descriptive statistics</h2>
+<p>Going to take a look at the descriptive stats for each variable. Of interest will be the mean, sd, skew, and kurtosis.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Subsetting by section and sub-section</span>
 demographic &lt;-<span class="st"> </span><span class="kw">select</span>(PECTAC, <span class="dv">1</span>:<span class="dv">14</span>)
 
@@ -982,48 +983,7 @@ alpha_table &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<sp
 <p><em>Out of these items, which two are the most important to you as a parent? (select two)</em></p>
 </blockquote>
 <p>As previously mentioned, this will be instrumental in gauging what parents find most and least important.</p>
-<table>
-<thead>
-<tr class="header">
-<th align="center">Scale</th>
-<th align="center">Questions</th>
-<th align="center">Rank</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center">Tech</td>
-<td align="center">15-29</td>
-<td align="center">30-44</td>
-</tr>
-<tr class="even">
-<td align="center">ATL</td>
-<td align="center">45-54</td>
-<td align="center">55-64</td>
-</tr>
-<tr class="odd">
-<td align="center">OCL</td>
-<td align="center">65-77</td>
-<td align="center">78-90</td>
-</tr>
-<tr class="even">
-<td align="center">CF</td>
-<td align="center">91-99</td>
-<td align="center">100-108</td>
-</tr>
-<tr class="odd">
-<td align="center">CUC</td>
-<td align="center">109-118</td>
-<td align="center">119-128</td>
-</tr>
-<tr class="even">
-<td align="center">BPP</td>
-<td align="center">129-139</td>
-<td align="center">140-150</td>
-</tr>
-</tbody>
-</table>
-<p>It was observed that several respondents selected more or less than two choices in their “top two”. An example of the Tech scale is shown below.</p>
+<p>These responses hope to be instrumental in gauging what parents find most and least important. It was observed that several respondents selected more or less than two choices in their “top two”. An example of the Tech scale is shown below.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Scales with two two most important data included Checking the sums</span>
 (PECTAC %&gt;%<span class="st"> </span><span class="kw">select</span>(<span class="dv">30</span>:<span class="dv">44</span>) %&gt;%<span class="st"> </span><span class="kw">rowSums</span>(<span class="dt">na.rm =</span> <span class="ot">TRUE</span>) %&gt;%<span class="st"> </span><span class="kw">table</span>())
 .
@@ -1137,7 +1097,7 @@ Finances.cor.matrix &lt;-<span class="st"> </span><span class="kw">rcorr</span>(
 <pre><code>                        [,1]</code></pre>
 <p>PBorrowHEquity 0.09823455 PBorrowPLUS 0.49386542 PBorrowPrivate 0.16619863 PBorrowRelativeFriend 0.06765734 PBorrowRetirePlan 0.04932203 PBorrowOther 0.12472202</p>
 <hr />
-<p>Worked on by Billy Jackson from November 2016 - February 2017<br />
+<p>Statistical analysis done by Billy Jackson from November 2016 - February 2017<br />
 Updated for public viewing on July 6, 2017<br />
 <a href="action781@gmail.com">Email</a> | <a href="https://sites.google.com/northshore.edu/billy-jackson/home">Homepage</a> | <a href="www.github.com/action781">Github</a></p>
 </div>
@@ -1148,7 +1108,7 @@ Updated for public viewing on July 6, 2017<br />
 
 <div id="postamble" data-toggle="wy-nav-shift" class="status">
 <p class="author"><span class="glyphicon glyphicon-user"></span> Billy Jackson</p>
-<p class="date"><span class="glyphicon glyphicon-calendar"></span> 2017-07-08</p>
+<p class="date"><span class="glyphicon glyphicon-calendar"></span> 2017-07-12</p>
 </div>
 
 
