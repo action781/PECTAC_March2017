@@ -15,5 +15,5 @@ lattice
 survival
 Formula
 Hmisc
-ProjectTemplate
 bindrcpp
+xtable
