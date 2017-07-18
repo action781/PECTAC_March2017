@@ -1,0 +1,15 @@
+name: "spacelab w/ navbar"
+navbar:
+    title: "Billy Jackson"
+    type: inverse
+    right:
+        - icon: fa-home
+          text: "Homepage"
+          href: https://action781.github.io
+        - icon: fa-envelope-o
+          href: mailto:action781@gmail.com
+        - icon: fa-linkedin-square
+          href: https://www.linkedin.com/in/william-jackson-a0ab9b97/
+        - icon: fa-github
+          href: https://github.com/action781
+    theme: "spacelab"

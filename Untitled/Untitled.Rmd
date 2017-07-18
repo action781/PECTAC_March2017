@@ -1,0 +1,69 @@
+---
+title: "INSERT TITLE"
+author: "Billy Jackson"
+output: 
+  html_document:
+    toc: true
+    toc_float: 
+        toc_depth: 3
+    code_folding: show
+    theme: "spacelab"
+---
+
+<!--Set document options--> 
+
+```{r Libraries, message = FALSE, warning = FALSE, echo = FALSE}
+# Load libraries; echo = FALSE recommended unless want to show users.
+library(tidyverse); library(knitr); library(DT)
+```
+
+```{r Local options, echo = FALSE}
+# Setting local knitr options for document
+knitr::opts_chunk$set(out.width='50%', out.height='50%', fig.align = "center")
+knitr::opts_chunk$set(message = FALSE) 
+knitr::opts_chunk$set(cache = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+<!--Begin document here--> 
+
+
+# Overview
+
+## Things to remember
+Things to remember before you start:  
+
+* An empty line before bullets
+* Remember that two spaces after a line  
+gets you to the next line
+* Dont forget about addins:  
+    + setting a theme  
+    + table of contents  
+    + tabset  
+
+# Load Data
+
+# Exploring the data
+
+
+
+*****
+
+
+# Tables in R Markdown
+```{r A table}
+# Use kable() or datatable() when printing a table in rmd
+knitr::kable(mtcars, caption = "Title")
+DT::datatable(mtcars, caption = "Title")
+```
+
+*****
+
+
+----- End Document here -----  
+
+
+*****
+Created by Billy Jackson on `r format(Sys.Date(), "%B %d, %Y")`  
+
+

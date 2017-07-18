@@ -1,7 +1,7 @@
 ---
 title: "A Measure Validation of the PECTAC Instrument"
 author: "Billy Jackson"
-date: "`r Sys.Date()`"
+date: "July 6, 2017"
 output:
   rmdformats::readthedown:
     highlight: tango
@@ -21,7 +21,7 @@ knitr::opts_knit$set(width=75)
 
 ```{r Libraries, message = FALSE, warning = FALSE, echo = FALSE, cache=FALSE}
 # Load libraries for factor analysis, exporting tables, cron's alpha, and tidyverse
-library(psy); library(tidyverse); library(lavaan); library(psych); library(knitr); library(DT); library(Hmisc); library(xtable)
+library(psy); library(tidyverse); library(lavaan); library(psych); library(knitr); library(DT); library(Hmisc)
 # library(caret)
 ```
 
@@ -88,12 +88,13 @@ How much annual income the family earns is column 167.
 
 ## Transforming COFHE data
 
-```{r}
+```{r Viewing Paying for College Data, collapse = TRUE}
 # Paying for college subset of data
-(select(PECTAC, 153:166))
+(select(PECTAC, 153:166))  
+  
 ```
 
-The COFHE financial data asked parents to respond whether partitions of their payment for their child's college was in the range of 0%, 1-25%, 26-50%, or 51-100%.  This introduced a lot of issues where parents' proportions came out to be well over 100% or under 100% in total.  To deal with this error, I will use a re-scaling method used by COFHE researcher Steve Micicucci.  The method imputes point estimates for each possible response as shown in the table below:
+The COFHE financial data (see snippet inside code above) asked parents to respond whether partitions of their payment for their child's college was in the range of 0%, 1-25%, 26-50%, or 51-100%.  This introduced a lot of issues where parents' proportions came out to be well over 100% or under 100% in total.  To deal with this error, I will use a re-scaling method used by COFHE researcher Steve Micicucci.  The method imputes point estimates for each possible response as shown in the table below:
 
 Response      |Range          | Point Estimate
 :-----------: | :-----------: | :------------:
@@ -138,6 +139,7 @@ datatable(PECTAC[,153:168])
 
 Looking at the totals column, I noticed that the last 100 entries were all NA for the COFHE data.  Upon looking further into that, it turns out that many of the later respondents didn't answer many of the questions, especially the financial data questions.  Something to talk to Justin about.
 
+*****
 
 # Descriptive Analysis
 
@@ -260,6 +262,7 @@ datatable(scale_stats, caption = "PECTAC Scales")
 The scale statistics are similar to the individual variable statistics -- each carrying a mean between 1 and 2 with a positive skew indicating that parents generally feel that all of the scales carry some importance.
 
 *****
+
 # Instrument Validity
 
 The game plan:
@@ -469,15 +472,17 @@ kable(pre_post_payment_table)
 
 The proportions by pre-college and in/post-college are shown in Table 7 above. A chi-square test shows there to be no significant difference between the two sets of proportions though.
 
+*****
+
 # Relationships among Finances and Expectations
 
 ## Relationship between income and method of payment
 
-The researchers noticed some significant relationships by analyzing a correlation matrix of parents’ income and payment methods. Generally, parents with the higher tax income were using more family assets to pay for their child’s college. Family assets were described as; ordinary savings and sale of stock or other financial assets, sale of non-financial assets (real estate, etc.), state-sponsored college savings (“529”) plan, pre-paid tuition plan, or a withdrawal from a retirement account. Conversely, parents with lower tax income reported borrowing money to pay for college, mostly from federal or private loans. The correlation matrix of income and payment methods is listed below in Table 8.
+The researchers noticed some significant relationships by analyzing a correlation matrix of parents’ income and payment methods. Generally, parents with the higher tax income were using more family assets to pay for their child’s college. Family assets were described as; ordinary savings and sale of stock or other financial assets, sale of non-financial assets (real estate, etc.), state-sponsored college savings (“529”) plan, pre-paid tuition plan, or a withdrawal from a retirement account. Conversely, parents with lower tax income reported borrowing money to pay for college, mostly from federal or private loans. The correlation matrix of income and payment methods is listed in the table below.
 ```{r Finances cor matrix, results = 'asis'}
 # Correlation matrix of tax income with method of payments
 Finances.cor.matrix <- rcorr(as.matrix(finances))
-kable(Finances.cor.matrix$r, caption = "Table 8: Relationships between Income and Payment Methods")
+kable(Finances.cor.matrix$r, caption = "Relationships between Income and Payment Methods")
 ```
 
 
@@ -537,22 +542,21 @@ summary(lm6)
 ```
 
 Answer:  Linear regressions computed above show there is no relationship between parent's TaxIncome2013 and their PECTAC expectations in categories 1, 2, 4-6.  There is a slight relationship (p=0.0015) between TaxIncome2013 and A Caring Faculty.  
-(Justin, do we want to elaborate on this?)
+(Justin, do we want to elaborate on this?)  
 
 
-### 2. Is there a relationship between parent's use of Family Assets to pay for college with their PECTAC expectations?
+### 2. Is there a relationship between parent's use of family assets to pay for college with their PECTAC expectations?
 
-Answer:  Linear regressions showed there is no relationship between parent's TaxIncome2013 and their PECTAC expectations in categories 1, 2, 4-6.  There is a slight relationship (p = 0.0018) between TaxIncome2013 and A Caring Faculty.  
-(do we want to elaborate on this?)
+Answer:  Linear regressions showed there is no relationship between parent's use of family assets to pay for college and their PECTAC expectations in categories 1, 2, 4-6.  There is a slight relationship (p = 0.0018) between use of family assets to pay for college and A Caring Faculty.  
+(do we want to elaborate on this?)  
 
-### 3. Is there a relationship between parent's use of borrowing to pay for college with their PECTAC expectations?
+### 3. Is there a relationship between parent's use of borrowing to pay for college with their PECTAC expectations? 
 
-Answer:  Linear regressions show that there is a slight negative relationship (p = 0.0080) between parents borrowing to pay for their child’s college and how they viewed the importance of Tech Resources in support of learning.  There was no significant relationship between use of family assets with the other five PECTAC scales.
-
+Answer:  Linear regressions show that there is a slight negative relationship (p = 0.0080) between parents borrowing to pay for their child’s college and how they viewed the importance of Tech Resources in support of learning.  There was no significant relationship between use of borrowing to pay for college with the other five PECTAC scales.  
 
 ### 4. Is there a relationship between parent's use of current income to pay for college with their PECTAC expectations?
 
-Answer:  There was no relationship found between parent’s use of current income to pay for their child’s college with their PECTAC expectations.
+Answer:  There was no relationship found between parent’s use of current income to pay for their child’s college with any of their PECTAC expectations.
 
 
 
